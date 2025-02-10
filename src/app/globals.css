@@ -5,6 +5,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --color-vermilion: #EF3E36;
+  --color-verdigris: #17BEBB;
+  --color-raisin: #2E282A;
+  --color-buff: #EDB88B;
+  --color-misty: #E1F7F7;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,4 +23,32 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-50;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-md bg-[#17BEBB] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#15aaa7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17BEBB] disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-[#2E282A] shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-[#E1F7F7] disabled:opacity-50;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-md bg-[#EF3E36] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#d83730] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#EF3E36] disabled:opacity-50;
+  }
+
+  .input-primary {
+    @apply block w-full rounded-md border-0 py-1.5 text-[#2E282A] shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-[#17BEBB] sm:text-sm sm:leading-6;
+  }
+
+  .link-primary {
+    @apply text-[#17BEBB] hover:text-[#15aaa7] font-medium;
+  }
 }
