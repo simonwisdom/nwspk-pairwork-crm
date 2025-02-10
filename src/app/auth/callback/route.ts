@@ -35,7 +35,12 @@ export async function GET(request: Request) {
               request,
             })
             cookiesToSet.forEach(({ name, value, options }) => {
-              response.cookies.set(name, value, options)
+              response.cookies.set(name, value, {
+                path: '/',
+                sameSite: 'lax',
+                secure: true,
+                ...options,
+              })
             })
             return response
           },
@@ -45,12 +50,20 @@ export async function GET(request: Request) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      const redirectUrl = new URL(next, request.url)
+      const redirectUrl = next.startsWith('http')
+        ? next
+        : new URL(next, request.url).toString()
+
       const response = NextResponse.redirect(redirectUrl)
       // Copy cookies from the supabase response to maintain session state
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.access_token) {
-        response.cookies.set('access_token', session.access_token)
+        response.cookies.set('access_token', session.access_token, {
+          path: '/',
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax',
+        })
       }
       return response
     }

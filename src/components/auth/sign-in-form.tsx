@@ -13,14 +13,12 @@ export default function AuthForm() {
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState<string | null>(null)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    setSuccess(null)
 
     try {
       const supabase = createClient()
@@ -33,7 +31,6 @@ export default function AuthForm() {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
         })
         
@@ -44,11 +41,16 @@ export default function AuthForm() {
           return
         }
 
-        setSuccess('Please check your email to verify your account.')
-        // Clear form
-        setEmail('')
-        setPassword('')
-        setFullName('')
+        // Automatically sign in after signup
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+
+        if (signInError) throw signInError
+
+        router.push('/dashboard')
+        router.refresh()
         return
       }
 
@@ -76,13 +78,12 @@ export default function AuthForm() {
           type="button"
           className={`px-4 py-2 text-sm font-medium rounded-md ${
             mode === 'signin'
-              ? 'bg-indigo-600 text-white'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-[#17BEBB] text-white'
+              : 'text-[#2E282A]/70 hover:text-[#2E282A]'
           }`}
           onClick={() => {
             setMode('signin')
             setError(null)
-            setSuccess(null)
           }}
         >
           Sign In
@@ -91,13 +92,12 @@ export default function AuthForm() {
           type="button"
           className={`px-4 py-2 text-sm font-medium rounded-md ${
             mode === 'signup'
-              ? 'bg-indigo-600 text-white'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-[#17BEBB] text-white'
+              : 'text-[#2E282A]/70 hover:text-[#2E282A]'
           }`}
           onClick={() => {
             setMode('signup')
             setError(null)
-            setSuccess(null)
           }}
         >
           Sign Up
@@ -108,12 +108,6 @@ export default function AuthForm() {
         {error && (
           <div className="rounded-md bg-red-50 p-4">
             <div className="text-sm text-red-700">{error}</div>
-          </div>
-        )}
-        
-        {success && (
-          <div className="rounded-md bg-green-50 p-4">
-            <div className="text-sm text-green-700">{success}</div>
           </div>
         )}
 
@@ -128,7 +122,7 @@ export default function AuthForm() {
                 name="fullName"
                 type="text"
                 required={mode === 'signup'}
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-2 border border-[#2E282A]/20 placeholder-[#2E282A]/50 text-[#2E282A] rounded-md focus:outline-none focus:ring-[#17BEBB] focus:border-[#17BEBB] focus:z-10 sm:text-sm"
                 placeholder="Full Name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -145,7 +139,7 @@ export default function AuthForm() {
               name="email"
               type="email"
               required
-              className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+              className="appearance-none relative block w-full px-3 py-2 border border-[#2E282A]/20 placeholder-[#2E282A]/50 text-[#2E282A] rounded-md focus:outline-none focus:ring-[#17BEBB] focus:border-[#17BEBB] focus:z-10 sm:text-sm"
               placeholder="Email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -161,7 +155,7 @@ export default function AuthForm() {
               name="password"
               type="password"
               required
-              className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+              className="appearance-none relative block w-full px-3 py-2 border border-[#2E282A]/20 placeholder-[#2E282A]/50 text-[#2E282A] rounded-md focus:outline-none focus:ring-[#17BEBB] focus:border-[#17BEBB] focus:z-10 sm:text-sm"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -173,7 +167,7 @@ export default function AuthForm() {
           <button
             type="submit"
             disabled={loading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#17BEBB] hover:bg-[#17BEBB]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#17BEBB] disabled:opacity-50"
           >
             {loading
               ? mode === 'signin'
