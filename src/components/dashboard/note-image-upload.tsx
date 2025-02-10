@@ -49,7 +49,7 @@ export default function NoteImageUpload({ onImageUploaded, existingImageUrl }: N
       // Upload image to Supabase Storage
       const fileExt = file.name.split('.').pop()
       const fileName = `${userId}/${Date.now()}.${fileExt}`
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('note-images')
         .upload(fileName, file)
 

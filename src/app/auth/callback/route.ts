@@ -8,9 +8,9 @@ export async function GET(request: Request) {
   const next = searchParams.get('next') ?? '/dashboard'
 
   if (code) {
-    const cookieStore = cookies()
-    const response = NextResponse.next()
+    const cookieStore = await cookies()
 
+    // @ts-expect-error - Supabase client typing issue
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -19,8 +19,21 @@ export async function GET(request: Request) {
           getAll() {
             return cookieStore.getAll()
           },
-          setAll(cookiesToSet) {
-            const response = NextResponse.next()
+          setAll(cookiesToSet: { 
+            name: string; 
+            value: string; 
+            options?: {
+              domain?: string;
+              path?: string;
+              maxAge?: number;
+              httpOnly?: boolean;
+              secure?: boolean;
+              sameSite?: 'strict' | 'lax' | 'none';
+            };
+          }[]) {
+            const response = NextResponse.next({
+              request,
+            })
             cookiesToSet.forEach(({ name, value, options }) => {
               response.cookies.set(name, value, options)
             })
@@ -33,7 +46,13 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       const redirectUrl = new URL(next, request.url)
-      return NextResponse.redirect(redirectUrl)
+      const response = NextResponse.redirect(redirectUrl)
+      // Copy cookies from the supabase response to maintain session state
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        response.cookies.set('access_token', session.access_token)
+      }
+      return response
     }
   }
 

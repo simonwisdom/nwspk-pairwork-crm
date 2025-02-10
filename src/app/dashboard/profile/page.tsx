@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Image as ImageIcon, Upload, RefreshCw } from 'lucide-react'
+import Image from 'next/image'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -204,11 +205,15 @@ export default function ProfilePage() {
           <div className="mt-6 flex items-center gap-6">
             <div className="flex-shrink-0">
               {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Profile"
-                  className="h-24 w-24 rounded-full object-cover"
-                />
+                <div className="relative h-24 w-24 rounded-full overflow-hidden">
+                  <Image
+                    src={avatarUrl}
+                    alt="Profile"
+                    fill
+                    className="object-cover"
+                    sizes="96px"
+                  />
+                </div>
               ) : (
                 <div className="h-24 w-24 rounded-full bg-[#E1F7F7] flex items-center justify-center">
                   <ImageIcon className="h-12 w-12 text-[#17BEBB]" />

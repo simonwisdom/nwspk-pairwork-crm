@@ -2,13 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { UserCircle, Users, Calendar, FileText } from 'lucide-react'
+import { UserCircle, Users } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: UserCircle },
-  { name: 'Contacts', href: '/dashboard/contacts', icon: Users },
-  { name: '1-1 Meetings', href: '/dashboard/meetings', icon: Calendar },
-  { name: 'Notes', href: '/dashboard/notes', icon: FileText },
+  { name: 'Profile', href: '/dashboard/profile', icon: Users },
 ]
 
 export default function Sidebar() {

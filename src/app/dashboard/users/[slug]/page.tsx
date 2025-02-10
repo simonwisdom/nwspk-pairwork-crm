@@ -6,47 +6,34 @@ import AddNoteForm from '@/components/dashboard/note-form'
 import DeleteNoteButton from '@/components/dashboard/delete-note-button'
 import MeetingItem from '@/components/dashboard/meeting-item'
 import AddPairworkButton from '@/components/dashboard/add-pairwork-button'
-import EditNoteButton from '@/components/dashboard/edit-note-button'
 
-// Helper function to convert name to slug
-function nameToSlug(name: string) {
-  return name.toLowerCase().replace(/\s+/g, '-')
-}
-
-async function getUserProfile(slug: string) {
+async function getUserProfileBySlug(slug: string) {
   const supabase = await createClient()
   
   // Get current user
   const { data: { user: currentUser } } = await supabase.auth.getUser()
   if (!currentUser) return null
 
-  // Get all user profiles to find the one matching the slug
+  // Get user profile by matching the slug pattern
   const { data: profiles } = await supabase
     .from('user_profiles')
     .select('*')
-
+  
   // Find the profile matching the slug
-  const profile = profiles?.find(p => nameToSlug(p.full_name) === slug)
+  const profile = profiles?.find(p => {
+    const nameSlug = p.full_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    return nameSlug === slug
+  })
+
   if (!profile) return null
 
-  // Get all meetings where either user is involved
-  const { data: allMeetings } = await supabase
+  // Get all meetings
+  const { data: meetings } = await supabase
     .from('meetings')
-    .select('*, organizer:organizer_id(full_name), participant:participant_id(full_name)')
-    .or(`organizer_id.eq.${currentUser.id},participant_id.eq.${currentUser.id},organizer_id.eq.${profile.id},participant_id.eq.${profile.id}`)
+    .select('*')
+    .or(`organizer_id.eq.${currentUser.id},participant_id.eq.${currentUser.id}`)
+    .or(`organizer_id.eq.${profile.id},participant_id.eq.${profile.id}`)
     .order('scheduled_at', { ascending: false })
-
-  // Split meetings into shared and other sessions
-  const meetings = allMeetings || []
-  const sharedMeetings = meetings.filter(m => 
-    (m.organizer_id === currentUser.id && m.participant_id === profile.id) ||
-    (m.organizer_id === profile.id && m.participant_id === currentUser.id)
-  )
-  const otherMeetings = meetings.filter(m =>
-    (m.organizer_id === profile.id || m.participant_id === profile.id) &&
-    m.organizer_id !== currentUser.id &&
-    m.participant_id !== currentUser.id
-  )
 
   // Get notes
   const { data: notes } = await supabase
@@ -56,16 +43,15 @@ async function getUserProfile(slug: string) {
     .eq('contact_id', profile.id)
     .order('created_at', { ascending: false })
 
-  // Process shared meetings
-  const pastMeetings = sharedMeetings.filter(m => isPast(new Date(m.scheduled_at)))
-  const futureMeetings = sharedMeetings.filter(m => !isPast(new Date(m.scheduled_at)))
+  // Process meetings
+  const pastMeetings = meetings?.filter(m => isPast(new Date(m.scheduled_at))) || []
+  const futureMeetings = meetings?.filter(m => !isPast(new Date(m.scheduled_at))) || []
   const lastSession = pastMeetings[0]
   const nextSession = [...futureMeetings].reverse()[0]
 
   return {
     profile,
-    sharedMeetings,
-    otherMeetings,
+    meetings: meetings || [],
     lastSession,
     nextSession,
     pairworkCount: pastMeetings.length,
@@ -74,18 +60,13 @@ async function getUserProfile(slug: string) {
   }
 }
 
-export default async function UserProfilePage({
-  params,
-}: {
-  params: { slug: string }
-}) {
-  const data = await getUserProfile(params.slug)
+export default async function Page({ params }: { params: { slug: string } }) {
+    const data = await getUserProfileBySlug(params.slug)
   if (!data || !data.profile) return notFound()
 
   const { 
     profile, 
-    sharedMeetings, 
-    otherMeetings,
+    meetings,
     lastSession,
     nextSession,
     pairworkCount,
@@ -98,19 +79,26 @@ export default async function UserProfilePage({
       <div className="md:flex md:items-center md:justify-between md:space-x-5">
         <div className="flex items-start space-x-5">
           {profile.avatar_url ? (
-            <img className="h-16 w-16 rounded-full" src={profile.avatar_url} alt="" />
+            <Image
+              className="h-16 w-16 rounded-full"
+              src={profile.avatar_url}
+              alt=""
+              width={64}
+              height={64}
+              style={{ objectFit: 'cover' }}
+            />
           ) : (
-            <div className="h-16 w-16 rounded-full bg-[#E1F7F7] flex items-center justify-center">
-              <span className="text-[#17BEBB] font-medium text-2xl">
+            <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center">
+              <span className="text-indigo-600 font-medium text-2xl">
                 {profile.full_name?.charAt(0).toUpperCase()}
               </span>
             </div>
           )}
           <div>
-            <h1 className="text-2xl font-bold text-[#2E282A]">{profile.full_name}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{profile.full_name}</h1>
             <div className="mt-1 flex flex-col gap-1">
-              <p className="text-sm text-[#2E282A]/60">
-                Total pairwork sessions: <span className="font-medium text-[#2E282A]">{pairworkCount}</span>
+              <p className="text-sm text-gray-500">
+                Total pairwork sessions: <span className="font-medium">{pairworkCount}</span>
               </p>
               {lastSession && (
                 <p className="text-sm text-gray-500">
@@ -140,65 +128,32 @@ export default async function UserProfilePage({
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-flow-col lg:grid-cols-3">
-        {/* Pairwork Sessions Container */}
-        <div className="lg:col-span-1 flex flex-col gap-6">
-          {/* Your Shared Sessions */}
-          <div className="bg-white shadow sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6">
-              <h2 className="text-lg font-medium leading-6 text-gray-900">Your Pairwork Sessions</h2>
-            </div>
-            <div className="border-t border-gray-200">
-              <ul role="list" className="divide-y divide-gray-200">
-                {sharedMeetings.map((meeting) => (
-                  <MeetingItem
-                    key={meeting.id}
-                    meeting={meeting}
-                    isOrganizer={meeting.organizer_id === currentUserId}
-                  />
-                ))}
-                {sharedMeetings.length === 0 && (
-                  <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">
-                    No shared pairwork sessions yet
-                  </li>
-                )}
-              </ul>
-            </div>
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Recent Pairwork Sessions */}
+        <div className="bg-white shadow sm:rounded-lg">
+          <div className="px-4 py-5 sm:px-6">
+            <h2 className="text-lg font-medium leading-6 text-gray-900">Pairwork Sessions</h2>
           </div>
-
-          {/* Their Other Sessions */}
-          <div className="bg-white shadow sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6">
-              <h2 className="text-lg font-medium leading-6 text-gray-900">
-                {profile.full_name.split(' ')[0]}'s Other Sessions
-              </h2>
-            </div>
-            <div className="border-t border-gray-200">
-              <ul role="list" className="divide-y divide-gray-200">
-                {otherMeetings.map((meeting) => (
-                  <li key={meeting.id} className="px-4 py-4 sm:px-6">
-                    <p className="text-sm text-gray-900">
-                      With {meeting.organizer_id === profile.id 
-                        ? meeting.participant.full_name
-                        : meeting.organizer.full_name}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      {format(new Date(meeting.scheduled_at), 'PPP')}
-                    </p>
-                  </li>
-                ))}
-                {otherMeetings.length === 0 && (
-                  <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">
-                    No other pairwork sessions
-                  </li>
-                )}
-              </ul>
-            </div>
+          <div className="border-t border-gray-200">
+            <ul role="list" className="divide-y divide-gray-200">
+              {meetings.map((meeting) => (
+                <MeetingItem
+                  key={meeting.id}
+                  meeting={meeting}
+                  isOrganizer={meeting.organizer_id === currentUserId}
+                />
+              ))}
+              {meetings.length === 0 && (
+                <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">
+                  No pairwork sessions yet
+                </li>
+              )}
+            </ul>
           </div>
         </div>
 
         {/* Notes */}
-        <div className="lg:col-span-2 bg-white shadow sm:rounded-lg">
+        <div className="bg-white shadow sm:rounded-lg">
           <div className="px-4 py-5 sm:px-6">
             <h2 className="text-lg font-medium leading-6 text-gray-900">Notes</h2>
           </div>
@@ -217,9 +172,10 @@ export default async function UserProfilePage({
                           <Image
                             src={note.image_url}
                             alt="Note attachment"
+                            className="rounded-lg max-w-sm object-cover"
                             width={400}
                             height={300}
-                            className="rounded-lg object-cover"
+                            style={{ objectFit: 'cover' }}
                           />
                         </div>
                       )}
@@ -227,10 +183,7 @@ export default async function UserProfilePage({
                         {format(new Date(note.created_at), 'PPP')}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <EditNoteButton note={note} />
-                      <DeleteNoteButton noteId={note.id} />
-                    </div>
+                    <DeleteNoteButton noteId={note.id} />
                   </div>
                 </li>
               ))}
@@ -245,4 +198,19 @@ export default async function UserProfilePage({
       </div>
     </div>
   )
+}
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const data = await getUserProfileBySlug(params.slug)
+  if (!data || !data.profile) {
+    return {
+      title: 'User Not Found'
+    }
+  }
+
+  return {
+    title: `${data.profile.full_name} | Pairwork`,
+    alternates: {
+      canonical: `/dashboard/users/${params.slug}`
+    }
+  }
 } 

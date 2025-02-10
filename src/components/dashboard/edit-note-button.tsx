@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { Edit2, Check, X } from 'lucide-react'
 import NoteImageUpload from './note-image-upload'
 

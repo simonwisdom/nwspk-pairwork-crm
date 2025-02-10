@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { formatDistanceToNow, isPast, format } from 'date-fns'
+import { isPast, format } from 'date-fns'
 import ScheduleMeetingButton from '@/components/dashboard/schedule-meeting-button'
+import Image from 'next/image'
 
 function nameToSlug(name: string) {
   return name.toLowerCase().replace(/\s+/g, '-')
@@ -45,6 +46,13 @@ async function getUsers() {
     console.error('Error fetching meetings:', meetingsError)
   }
 
+  // Define a Meeting type for better type safety
+  type Meeting = {
+    scheduled_at: string;
+    organizer_id: string;
+    participant_id: string;
+  }
+
   // Process meetings for each user
   const userStats = otherUsers.reduce((acc, otherUser) => {
     const userMeetings = allMeetings?.filter(m => 
@@ -55,7 +63,7 @@ async function getUsers() {
     const pastMeetings = userMeetings.filter(m => isPast(new Date(m.scheduled_at)))
     const futureMeetings = userMeetings.filter(m => !isPast(new Date(m.scheduled_at)))
     const lastSession = pastMeetings[0]
-    const nextSession = [...futureMeetings].reverse()[0] // Get earliest future session
+    const nextSession = [...futureMeetings].reverse()[0]
 
     acc[otherUser.id] = {
       pairworkCount: pastMeetings.length,
@@ -63,7 +71,7 @@ async function getUsers() {
       nextSession
     }
     return acc
-  }, {} as Record<string, { pairworkCount: number, lastSession?: any, nextSession?: any }>)
+  }, {} as Record<string, { pairworkCount: number, lastSession?: Meeting, nextSession?: Meeting }>)
 
   return {
     users: otherUsers,
@@ -132,14 +140,14 @@ export default async function DashboardPage() {
                       <td colSpan={3} className="px-6 py-4 text-sm text-[#2E282A] text-center">
                         No other users found. This could mean:
                         <ul className="list-disc list-inside mt-2">
-                          <li>You're the only user in the system</li>
-                          <li>Other users haven't completed their profile setup</li>
+                          <li>You&apos;re the only user in the system</li>
+                          <li>Other users haven&apos;t completed their profile setup</li>
                         </ul>
                       </td>
                     </tr>
                   ) : (
                     users.map((user) => {
-                      const stats = userStats[user.id]
+                      const stats = userStats?.[user.id]
                       return (
                         <tr key={user.id}>
                           <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
@@ -149,7 +157,13 @@ export default async function DashboardPage() {
                             >
                               <div className="h-10 w-10 flex-shrink-0">
                                 {user.avatar_url ? (
-                                  <img className="h-10 w-10 rounded-full" src={user.avatar_url} alt="" />
+                                  <Image 
+                                    className="h-10 w-10 rounded-full"
+                                    src={user.avatar_url}
+                                    alt=""
+                                    width={40}
+                                    height={40}
+                                  />
                                 ) : (
                                   <div className="h-10 w-10 rounded-full bg-[#E1F7F7] flex items-center justify-center">
                                     <span className="text-[#17BEBB] font-medium text-lg">
@@ -166,14 +180,14 @@ export default async function DashboardPage() {
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-[#2E282A]">
                             <div className="flex flex-col gap-1">
                               <p>
-                                Total sessions: <span className="font-medium">{stats.pairworkCount}</span>
+                                Total sessions: <span className="font-medium">{stats?.pairworkCount || 0}</span>
                               </p>
-                              {stats.lastSession && (
+                              {stats?.lastSession && (
                                 <p>
                                   Last session: <span className="font-medium">{format(new Date(stats.lastSession.scheduled_at), 'PPP')}</span>
                                 </p>
                               )}
-                              {stats.nextSession && (
+                              {stats?.nextSession && (
                                 <p>
                                   Next session: <span className="font-medium">{format(new Date(stats.nextSession.scheduled_at), 'PPP')}</span>
                                 </p>
@@ -184,9 +198,8 @@ export default async function DashboardPage() {
                             <div className="flex justify-end gap-4">
                               <ScheduleMeetingButton 
                                 userId={user.id}
-                                currentUserId={currentUserId}
-                                meetingLink={user.meeting_link}
-                                className="btn-primary"
+                                currentUserId={currentUserId ?? ''}
+                                meetingLink={user.meeting_link ?? ''}
                               />
                               <Link
                                 href={`/dashboard/users/${nameToSlug(user.full_name)}`}

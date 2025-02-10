@@ -52,7 +52,7 @@ export default function NoteForm({ userId, contactId, meetingId }: NoteFormProps
         noteData.meeting_id = meetingId
       }
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('notes')
         .insert([noteData])
         .select()
