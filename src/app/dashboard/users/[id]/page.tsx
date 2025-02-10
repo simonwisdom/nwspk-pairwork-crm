@@ -6,24 +6,25 @@ import AddNoteForm from '@/components/dashboard/note-form'
 import DeleteNoteButton from '@/components/dashboard/delete-note-button'
 import MeetingItem from '@/components/dashboard/meeting-item'
 import AddPairworkButton from '@/components/dashboard/add-pairwork-button'
+import type { Metadata } from 'next'
 
-async function getUserProfileBySlug(slug: string) {
+type PageProps = {
+  params: Promise<{ id: string }>
+}
+
+async function getUserProfile(userId: string) {
   const supabase = await createClient()
   
   // Get current user
   const { data: { user: currentUser } } = await supabase.auth.getUser()
   if (!currentUser) return null
 
-  // Get user profile by matching the slug pattern
-  const { data: profiles } = await supabase
+  // Get user profile
+  const { data: profile } = await supabase
     .from('user_profiles')
     .select('*')
-  
-  // Find the profile matching the slug
-  const profile = profiles?.find(p => {
-    const nameSlug = p.full_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-    return nameSlug === slug
-  })
+    .eq('id', userId)
+    .single()
 
   if (!profile) return null
 
@@ -32,7 +33,7 @@ async function getUserProfileBySlug(slug: string) {
     .from('meetings')
     .select('*')
     .or(`organizer_id.eq.${currentUser.id},participant_id.eq.${currentUser.id}`)
-    .or(`organizer_id.eq.${profile.id},participant_id.eq.${profile.id}`)
+    .or(`organizer_id.eq.${userId},participant_id.eq.${userId}`)
     .order('scheduled_at', { ascending: false })
 
   // Get notes
@@ -40,7 +41,7 @@ async function getUserProfileBySlug(slug: string) {
     .from('notes')
     .select('*')
     .eq('user_id', currentUser.id)
-    .eq('contact_id', profile.id)
+    .eq('contact_id', userId)
     .order('created_at', { ascending: false })
 
   // Process meetings
@@ -60,8 +61,9 @@ async function getUserProfileBySlug(slug: string) {
   }
 }
 
-export default async function Page({ params }: { params: { slug: string } }) {
-    const data = await getUserProfileBySlug(params.slug)
+export default async function Page(props: PageProps) {
+  const params = await props.params
+  const data = await getUserProfile(params.id)
   if (!data || !data.profile) return notFound()
 
   const { 
@@ -114,7 +116,7 @@ export default async function Page({ params }: { params: { slug: string } }) {
           </div>
         </div>
         <div className="mt-6 flex flex-col-reverse justify-stretch space-y-4 space-y-reverse sm:flex-row-reverse sm:justify-end sm:space-x-3 sm:space-y-0 sm:space-x-reverse md:mt-0 md:flex-row md:space-x-3">
-          <AddPairworkButton userId={profile.id} currentUserId={currentUserId} />
+          <AddPairworkButton userId={params.id} currentUserId={currentUserId} />
           {profile.meeting_link && (
             <a
               href={profile.meeting_link}
@@ -199,8 +201,10 @@ export default async function Page({ params }: { params: { slug: string } }) {
     </div>
   )
 }
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const data = await getUserProfileBySlug(params.slug)
+
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const params = await props.params
+  const data = await getUserProfile(params.id)
   if (!data || !data.profile) {
     return {
       title: 'User Not Found'
@@ -208,9 +212,6 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 
   return {
-    title: `${data.profile.full_name} | Pairwork`,
-    alternates: {
-      canonical: `/dashboard/users/${params.slug}`
-    }
+    title: `${data.profile.full_name} | Pairwork`
   }
 } 

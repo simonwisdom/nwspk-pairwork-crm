@@ -4,10 +4,6 @@ import { isPast, format } from 'date-fns'
 import ScheduleMeetingButton from '@/components/dashboard/schedule-meeting-button'
 import Image from 'next/image'
 
-function nameToSlug(name: string) {
-  return name.toLowerCase().replace(/\s+/g, '-')
-}
-
 async function getUsers() {
   const supabase = await createClient()
   
@@ -152,7 +148,7 @@ export default async function DashboardPage() {
                         <tr key={user.id}>
                           <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
                             <Link 
-                              href={`/dashboard/users/${nameToSlug(user.full_name)}`} 
+                              href={`/dashboard/users/${user.id}`} 
                               className="flex items-center hover:opacity-75"
                             >
                               <div className="h-10 w-10 flex-shrink-0">
@@ -202,7 +198,7 @@ export default async function DashboardPage() {
                                 meetingLink={user.meeting_link ?? ''}
                               />
                               <Link
-                                href={`/dashboard/users/${nameToSlug(user.full_name)}`}
+                                href={`/dashboard/users/${user.id}`}
                                 className="link-primary"
                               >
                                 View Pairwork Notes
